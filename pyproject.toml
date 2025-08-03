@@ -10,4 +10,6 @@ dependencies = [
     "requests>=2.32.4",
     "scikit-learn>=1.7.1",
     "streamlit>=1.47.1",
+    "trafilatura>=2.0.0",
+    "twilio>=9.7.0",
 ]
