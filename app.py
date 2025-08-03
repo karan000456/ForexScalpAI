@@ -8,7 +8,7 @@ import time
 import datetime
 from forex_data import ForexDataProvider
 from technical_indicators import TechnicalIndicators
-from ml_signals import MLSignalGenerator
+from enhanced_ml_signals import EnhancedMLSignalGenerator
 from utils import format_currency, calculate_profit_loss
 from user_guide import show_user_guide
 from enhanced_features import PersonalTradingAssistant
@@ -29,13 +29,15 @@ if 'signal_history' not in st.session_state:
     st.session_state.signal_history = []
 if 'trades' not in st.session_state:
     st.session_state.trades = []
+if 'personal_settings' not in st.session_state:
+    st.session_state.personal_settings = None
 
 # Initialize components
 @st.cache_resource
 def initialize_components():
     forex_data = ForexDataProvider()
     tech_indicators = TechnicalIndicators()
-    ml_generator = MLSignalGenerator()
+    ml_generator = EnhancedMLSignalGenerator()
     assistant = PersonalTradingAssistant()
     notifications = TradingNotifications()
     guidance = BeginnerGuidance()
@@ -45,7 +47,21 @@ forex_data, tech_indicators, ml_generator, assistant, notifications, guidance = 
 
 # Main title
 st.title("🤖 Personal AI Forex Trading Assistant")
-st.markdown("### Simple, Safe, and Smart Trading for Everyone")
+st.markdown("### Simple, Safe, and Smart Trading that Learns from Every Decision")
+
+# Show AI learning status
+if 'learning_data' in st.session_state and st.session_state.learning_data.get('learning_stats'):
+    stats = st.session_state.learning_data['learning_stats']
+    if stats['total_feedback'] > 0:
+        success_rate = (stats['successful_predictions'] / stats['total_feedback']) * 100
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("AI Learning Progress", f"{stats['total_feedback']} decisions")
+        with col2:
+            st.metric("Success Rate", f"{success_rate:.1f}%")
+        with col3:
+            st.metric("Model Updates", stats['adaptation_count'])
+        st.markdown("---")
 
 # Check if user needs initial setup
 if not st.session_state.get('personal_settings'):
@@ -54,11 +70,12 @@ if not st.session_state.get('personal_settings'):
     st.stop()
 
 # Main navigation
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "🎯 Simple Trading", 
     "📊 Advanced Charts", 
     "📖 My Journal", 
     "🛡️ Risk Manager", 
+    "🧠 AI Learning",
     "📚 Learn Trading"
 ])
 
@@ -125,8 +142,8 @@ with tab1:
                 # Calculate indicators
                 indicators = tech_indicators.calculate_all_indicators(price_data)
                 
-                # Generate signal
-                current_signal = ml_generator.generate_signal(price_data, indicators, "Moderate")
+                # Generate enhanced signal with adaptive learning
+                current_signal = ml_generator.generate_enhanced_signal(price_data, indicators, "Moderate", selected_pair)
                 
                 # Add some beginner-friendly data to signal
                 current_price = price_data['close'].iloc[-1]
@@ -208,16 +225,20 @@ with tab1:
         st.subheader("🎓 What's Happening?")
         
         # Show beginner explanations
-        if 'indicators' in locals():
-            assistant.show_beginner_explanation(indicators)
-        
-        # Recommendations
-        if 'current_signal' in locals():
-            recommendations = assistant.get_beginner_recommendations(current_signal, selected_pair)
-            
-            st.subheader("💡 My Recommendations")
-            for rec in recommendations:
-                st.write(rec)
+        try:
+            if price_data is not None and not price_data.empty:
+                indicators = tech_indicators.calculate_all_indicators(price_data)
+                assistant.show_beginner_explanation(indicators)
+                
+                # Recommendations
+                current_signal = ml_generator.generate_enhanced_signal(price_data, indicators, "Moderate", selected_pair)
+                recommendations = assistant.get_beginner_recommendations(current_signal, selected_pair)
+                
+                st.subheader("💡 My Recommendations")
+                for rec in recommendations:
+                    st.write(rec)
+        except Exception as e:
+            st.info("Market analysis will appear here when data is available.")
         
         # Quick stats
         st.subheader("📊 Your Stats")
@@ -245,7 +266,7 @@ with tab2:
             
             if price_data is not None and not price_data.empty:
                 indicators = tech_indicators.calculate_all_indicators(price_data)
-                current_signal = ml_generator.generate_signal(price_data, indicators, "Moderate")
+                current_signal = ml_generator.generate_enhanced_signal(price_data, indicators, "Moderate", selected_pair)
                 
                 # Create advanced chart
                 fig = make_subplots(
@@ -409,8 +430,117 @@ with tab4:
         if abs(today_losses) >= loss_limit:
             st.error("Daily loss limit reached!")
 
-# Tab 5: Learning Resources
+# Tab 5: AI Learning Dashboard
 with tab5:
+    st.header("🧠 AI Learning Dashboard")
+    st.markdown("### See How Your AI Assistant Gets Smarter Every Day")
+    
+    # Show AI decision insights and learning progress
+    ml_generator.show_model_insights()
+    
+    st.markdown("---")
+    
+    # Trade outcome feedback section
+    st.subheader("📝 Help Your AI Learn")
+    st.markdown("**Tell the AI how its recent recommendations worked out so it can improve!**")
+    
+    # Get recent signals for feedback
+    recent_signals = getattr(ml_generator, 'signal_history', [])[-5:]
+    
+    if recent_signals:
+        for i, signal_data in enumerate(reversed(recent_signals)):
+            timestamp = signal_data['timestamp'].strftime("%H:%M")
+            signal = signal_data['signal']
+            
+            with st.expander(f"Signal from {timestamp}: {signal['action']} - {signal.get('confidence', 0):.0f}% confidence"):
+                st.write(f"**Recommendation:** {signal['action']} {signal_data['pair']}")
+                st.write(f"**AI Confidence:** {signal.get('confidence', 0):.0f}%")
+                st.write(f"**Method:** {signal.get('method', 'Unknown')}")
+                
+                # Outcome feedback buttons
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    if st.button("✅ Good call!", key=f"good_{i}"):
+                        # Record positive feedback
+                        trade_outcome = {
+                            'pair': signal_data['pair'],
+                            'action': signal['action'],
+                            'confidence': signal.get('confidence', 50),
+                            'entry_price': signal.get('entry_price', 1.0000),
+                            'result': 'Win',
+                            'market_conditions': signal.get('market_conditions', {}),
+                            'indicators': signal.get('indicators', {})
+                        }
+                        ml_generator.record_trade_outcome(trade_outcome)
+                        st.success("Thanks! The AI learned from this success.")
+                        st.rerun()
+                
+                with col2:
+                    if st.button("❌ Wrong call", key=f"bad_{i}"):
+                        # Record negative feedback
+                        trade_outcome = {
+                            'pair': signal_data['pair'],
+                            'action': signal['action'],
+                            'confidence': signal.get('confidence', 50),
+                            'entry_price': signal.get('entry_price', 1.0000),
+                            'result': 'Loss',
+                            'market_conditions': signal.get('market_conditions', {}),
+                            'indicators': signal.get('indicators', {})
+                        }
+                        ml_generator.record_trade_outcome(trade_outcome)
+                        st.success("Thanks! The AI will learn from this mistake.")
+                        st.rerun()
+                
+                with col3:
+                    if st.button("⚪ Unclear", key=f"neutral_{i}"):
+                        # Record neutral feedback
+                        trade_outcome = {
+                            'pair': signal_data['pair'],
+                            'action': signal['action'],
+                            'confidence': signal.get('confidence', 50),
+                            'entry_price': signal.get('entry_price', 1.0000),
+                            'result': 'Breakeven',
+                            'market_conditions': signal.get('market_conditions', {}),
+                            'indicators': signal.get('indicators', {})
+                        }
+                        ml_generator.record_trade_outcome(trade_outcome)
+                        st.success("Thanks for the feedback!")
+                        st.rerun()
+    else:
+        st.info("No recent signals to provide feedback on. Start trading to see AI recommendations here!")
+    
+    st.markdown("---")
+    
+    # AI Learning Settings
+    st.subheader("⚙️ Learning Settings")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.write("**Learning Sensitivity:**")
+        learning_sensitivity = st.radio(
+            "How quickly should the AI adapt?",
+            ["Conservative", "Moderate", "Aggressive"],
+            index=1,
+            help="Conservative: Slower learning, more stable. Aggressive: Faster learning, may be less stable"
+        )
+    
+    with col2:
+        st.write("**Reset Learning:**")
+        st.warning("This will erase all learning progress!")
+        if st.button("🔄 Reset AI Learning", help="Use only if AI performance becomes worse"):
+            if st.session_state.get('confirm_reset'):
+                ml_generator.adaptive_engine.reset_learning_system()
+                st.success("AI learning system has been reset.")
+                st.session_state.confirm_reset = False
+                st.rerun()
+            else:
+                st.session_state.confirm_reset = True
+                st.error("Click again to confirm reset.")
+
+# Tab 6: Learning Resources  
+with tab6:
     show_user_guide()
 
 # Auto-refresh for live data
@@ -427,6 +557,7 @@ st.markdown("""
 <div style='text-align: center; color: gray;'>
     <small>
         🤖 Personal AI Forex Trading Assistant<br>
+        Self-Learning AI that Gets Smarter with Every Decision<br>
         Designed to keep you safe while you learn to trade successfully
     </small>
 </div>
