@@ -36,6 +36,9 @@ class PersonalTradingAssistant:
     
     def show_beginner_setup(self):
         """Show beginner-friendly setup wizard"""
+        # Ensure settings are initialized first
+        self.initialize_settings()
+        
         st.subheader("🎯 Personal Trading Setup")
         
         col1, col2 = st.columns(2)
@@ -44,31 +47,38 @@ class PersonalTradingAssistant:
             st.markdown("### Basic Information")
             
             # Account balance
+            if st.session_state.personal_settings is None:
+                st.session_state.personal_settings = {}
+            current_balance = st.session_state.personal_settings.get('account_balance', 1000.0)
             new_balance = st.number_input(
                 "Your Trading Account Balance ($)",
                 min_value=100.0,
                 max_value=100000.0,
-                value=st.session_state.personal_settings['account_balance'],
+                value=current_balance,
                 step=100.0,
                 help="Enter your actual account balance for accurate position sizing"
             )
             
             # Experience level
+            if st.session_state.personal_settings is None:
+                st.session_state.personal_settings = {}
+            current_experience = st.session_state.personal_settings.get('experience_level', 'Complete Beginner')
             experience = st.selectbox(
                 "Your Trading Experience",
                 ['Complete Beginner', 'Some Experience', 'Experienced'],
-                index=['Complete Beginner', 'Some Experience', 'Experienced'].index(
-                    st.session_state.personal_settings.get('experience_level', 'Complete Beginner')
-                ),
+                index=['Complete Beginner', 'Some Experience', 'Experienced'].index(current_experience),
                 help="This helps me adjust recommendations for your skill level"
             )
             
             # Risk tolerance
+            if st.session_state.personal_settings is None:
+                st.session_state.personal_settings = {}
+            current_risk = st.session_state.personal_settings.get('risk_per_trade', 2.0)
             risk_pct = st.slider(
                 "How much of your account to risk per trade (%)",
                 min_value=0.5,
                 max_value=5.0,
-                value=st.session_state.personal_settings['risk_per_trade'],
+                value=current_risk,
                 step=0.1,
                 help="Beginners should start with 1-2%. Never risk more than you can afford to lose."
             )
@@ -78,10 +88,13 @@ class PersonalTradingAssistant:
             
             # Preferred currency pairs
             all_pairs = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD']
+            if st.session_state.personal_settings is None:
+                st.session_state.personal_settings = {}
+            current_pairs = st.session_state.personal_settings.get('preferred_pairs', ['EUR/USD'])
             preferred_pairs = st.multiselect(
                 "Which currency pairs interest you?",
                 all_pairs,
-                default=st.session_state.personal_settings['preferred_pairs'],
+                default=current_pairs,
                 help="Start with EUR/USD - it's the most predictable for beginners"
             )
             

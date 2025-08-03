@@ -5,6 +5,7 @@ description = "Add your description here"
 requires-python = ">=3.11"
 dependencies = [
     "numpy>=2.3.2",
+    "openai>=1.98.0",
     "pandas>=2.3.1",
     "plotly>=6.2.0",
     "requests>=2.32.4",
