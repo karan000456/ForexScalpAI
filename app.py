@@ -11,13 +11,15 @@ from technical_indicators import TechnicalIndicators
 from ml_signals import MLSignalGenerator
 from utils import format_currency, calculate_profit_loss
 from user_guide import show_user_guide
+from enhanced_features import PersonalTradingAssistant
+from notifications import TradingNotifications, BeginnerGuidance
 import warnings
 warnings.filterwarnings('ignore')
 
 # Page configuration
 st.set_page_config(
-    page_title="AI Forex Trading Signals",
-    page_icon="📈",
+    page_title="Personal AI Forex Trading Assistant",
+    page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -34,75 +36,218 @@ def initialize_components():
     forex_data = ForexDataProvider()
     tech_indicators = TechnicalIndicators()
     ml_generator = MLSignalGenerator()
-    return forex_data, tech_indicators, ml_generator
+    assistant = PersonalTradingAssistant()
+    notifications = TradingNotifications()
+    guidance = BeginnerGuidance()
+    return forex_data, tech_indicators, ml_generator, assistant, notifications, guidance
 
-forex_data, tech_indicators, ml_generator = initialize_components()
+forex_data, tech_indicators, ml_generator, assistant, notifications, guidance = initialize_components()
 
-# Main title and navigation
-st.title("🤖 AI-Powered Forex Trading Signals")
-st.markdown("### Real-time Scalping Signals for Major Currency Pairs")
+# Main title
+st.title("🤖 Personal AI Forex Trading Assistant")
+st.markdown("### Simple, Safe, and Smart Trading for Everyone")
 
-# Add navigation tabs
-tab1, tab2 = st.tabs(["📊 Trading Dashboard", "📚 User Guide"])
+# Check if user needs initial setup
+if not st.session_state.get('personal_settings'):
+    st.warning("👋 Welcome! Let's set up your personal trading profile first.")
+    assistant.show_beginner_setup()
+    st.stop()
 
-with tab2:
-    show_user_guide()
+# Main navigation
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "🎯 Simple Trading", 
+    "📊 Advanced Charts", 
+    "📖 My Journal", 
+    "🛡️ Risk Manager", 
+    "📚 Learn Trading"
+])
 
-# Sidebar configuration (outside of tabs since sidebar is global)
-st.sidebar.header("⚙️ Trading Configuration")
+# Sidebar - Personal Settings
+st.sidebar.header("⚙️ Your Trading Profile")
+settings = st.session_state.personal_settings
 
-# Currency pair selection
-currency_pairs = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD']
-selected_pair = st.sidebar.selectbox("Select Currency Pair", currency_pairs, index=0)
+# Quick settings display
+st.sidebar.write(f"**Account:** ${settings['account_balance']:,.2f}")
+st.sidebar.write(f"**Risk Level:** {settings['risk_per_trade']}%")
+st.sidebar.write(f"**Experience:** {settings['experience_level']}")
 
-# Risk management settings
-st.sidebar.subheader("Risk Management")
-risk_percentage = st.sidebar.slider("Risk per Trade (%)", 1.0, 5.0, 2.0, 0.1)
-stop_loss_pips = st.sidebar.number_input("Stop Loss (pips)", min_value=5, max_value=50, value=15)
-take_profit_pips = st.sidebar.number_input("Take Profit (pips)", min_value=10, max_value=100, value=30)
+# Currency pair selection (only show preferred pairs)
+preferred_pairs = settings.get('preferred_pairs', ['EUR/USD'])
+if len(preferred_pairs) == 1:
+    selected_pair = preferred_pairs[0]
+    st.sidebar.write(f"**Trading:** {selected_pair}")
+else:
+    selected_pair = st.sidebar.selectbox("Select Pair", preferred_pairs)
 
-# Signal sensitivity
-st.sidebar.subheader("Signal Settings")
-signal_sensitivity = st.sidebar.select_slider(
-    "Signal Sensitivity",
-    options=["Conservative", "Moderate", "Aggressive"],
-    value="Moderate"
-)
+# Quick actions
+if st.sidebar.button("⚙️ Update Profile"):
+    st.session_state.show_setup = True
 
-# Auto-refresh settings
-auto_refresh = st.sidebar.checkbox("Auto Refresh", value=False)
-refresh_interval = st.sidebar.selectbox("Refresh Interval", [5, 10, 15, 30], index=1)
+if st.sidebar.button("🔔 Notifications"):
+    st.session_state.show_notifications = True
 
+# Show notifications if requested
+if st.session_state.get('show_notifications'):
+    with st.sidebar:
+        notifications.show_notification_settings()
+        if st.button("✅ Close"):
+            st.session_state.show_notifications = False
+            st.rerun()
+
+# Show setup if requested
+if st.session_state.get('show_setup'):
+    with st.container():
+        assistant.show_beginner_setup()
+        if st.button("✅ Done"):
+            st.session_state.show_setup = False
+            st.rerun()
+
+# Tab 1: Simple Trading (Beginner-friendly)
 with tab1:
-    # Risk disclaimer
-    with st.expander("⚠️ IMPORTANT TRADING DISCLAIMER - READ BEFORE USE"):
-        st.error("""
-        **HIGH RISK WARNING**: Trading foreign exchange on margin carries a high level of risk and may not be suitable for all investors. 
-        Past performance is not indicative of future results. The high degree of leverage can work against you as well as for you. 
-        Before deciding to trade foreign exchange you should carefully consider your investment objectives, level of experience, and risk appetite.
-        
-        This tool provides educational signals based on technical analysis and should not be considered as financial advice. 
-        Always do your own research and consider consulting with a qualified financial advisor.
-        """)
-
-    # Main dashboard layout
+    # Show beginner guidance if enabled
+    if st.session_state.guidance_progress.get('show_guidance', True):
+        guidance.show_beginner_guidance()
+        st.markdown("---")
+    
+    # Show notifications
+    notifications.show_notifications()
+    
     col1, col2 = st.columns([2, 1])
     
     with col1:
-        st.subheader(f"📊 {selected_pair} Live Analysis")
+        st.subheader(f"💹 {selected_pair} - What Should I Do?")
         
-        # Get live data
+        try:
+            # Get live data
+            price_data = forex_data.get_live_data(selected_pair)
+            
+            if price_data is not None and not price_data.empty:
+                # Calculate indicators
+                indicators = tech_indicators.calculate_all_indicators(price_data)
+                
+                # Generate signal
+                current_signal = ml_generator.generate_signal(price_data, indicators, "Moderate")
+                
+                # Add some beginner-friendly data to signal
+                current_price = price_data['close'].iloc[-1]
+                current_signal['entry_price'] = current_price
+                current_signal['stop_loss_pips'] = 15
+                current_signal['risk_reward_ratio'] = 2
+                
+                # Show simple signal card
+                assistant.show_simple_signal_card(current_signal, selected_pair)
+                
+                # Check for notifications
+                notifications.check_signal_notifications(current_signal, selected_pair)
+                notifications.check_market_notifications(indicators, selected_pair)
+                
+                # Position sizing info
+                position_info = assistant.calculate_position_size(current_signal, selected_pair)
+                notifications.check_risk_notifications(position_info, settings)
+                
+                # Simple chart
+                st.subheader("📈 Price Chart (Last 24 Hours)")
+                
+                fig = go.Figure()
+                
+                # Simple line chart for beginners
+                fig.add_trace(go.Scatter(
+                    x=price_data.index,
+                    y=price_data['close'],
+                    mode='lines',
+                    name='Price',
+                    line=dict(color='blue', width=2)
+                ))
+                
+                # Add current signal marker
+                if current_signal['action'] != 'HOLD':
+                    color = 'green' if current_signal['action'] == 'BUY' else 'red'
+                    symbol = 'triangle-up' if current_signal['action'] == 'BUY' else 'triangle-down'
+                    
+                    fig.add_trace(go.Scatter(
+                        x=[price_data.index[-1]],
+                        y=[current_price],
+                        mode='markers',
+                        marker=dict(symbol=symbol, size=15, color=color),
+                        name=f'{current_signal["action"]} Signal'
+                    ))
+                
+                fig.update_layout(
+                    height=400,
+                    title=f"{selected_pair} Price Movement",
+                    showlegend=True,
+                    xaxis_title="Time",
+                    yaxis_title="Price"
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Record trade button
+                if current_signal['action'] != 'HOLD':
+                    if st.button(f"📝 I want to {current_signal['action']} (Log this idea)", key="log_trade"):
+                        trade_data = {
+                            'pair': selected_pair,
+                            'action': current_signal['action'],
+                            'confidence': current_signal['confidence'],
+                            'entry_price': current_price,
+                            'position_size': position_info['position_size'],
+                            'risk_amount': position_info['risk_amount'],
+                            'status': 'Planned'
+                        }
+                        assistant.add_to_journal(trade_data)
+                        st.success("Trade idea saved to your journal!")
+                        st.rerun()
+            
+            else:
+                st.error("Unable to get market data right now. Please try again in a moment.")
+        
+        except Exception as e:
+            st.error(f"Something went wrong: {str(e)}")
+    
+    with col2:
+        st.subheader("🎓 What's Happening?")
+        
+        # Show beginner explanations
+        if 'indicators' in locals():
+            assistant.show_beginner_explanation(indicators)
+        
+        # Recommendations
+        if 'current_signal' in locals():
+            recommendations = assistant.get_beginner_recommendations(current_signal, selected_pair)
+            
+            st.subheader("💡 My Recommendations")
+            for rec in recommendations:
+                st.write(rec)
+        
+        # Quick stats
+        st.subheader("📊 Your Stats")
+        journal = st.session_state.trading_journal
+        
+        if journal:
+            total_trades = len(journal)
+            planned_trades = len([t for t in journal if t.get('status') == 'Planned'])
+            
+            st.metric("Ideas Logged", total_trades)
+            st.metric("Planned Trades", planned_trades)
+        else:
+            st.info("No trades logged yet")
+
+# Tab 2: Advanced Charts (for when user gains experience)
+with tab2:
+    st.subheader(f"📊 {selected_pair} Advanced Analysis")
+    
+    if settings['experience_level'] == 'Complete Beginner':
+        st.info("🎓 This section will unlock as you gain experience. Focus on the Simple Trading tab for now!")
+    else:
+        # Show full technical analysis (reuse existing code)
         try:
             price_data = forex_data.get_live_data(selected_pair)
             
             if price_data is not None and not price_data.empty:
-                # Calculate technical indicators
                 indicators = tech_indicators.calculate_all_indicators(price_data)
+                current_signal = ml_generator.generate_signal(price_data, indicators, "Moderate")
                 
-                # Generate ML signals
-                current_signal = ml_generator.generate_signal(price_data, indicators, signal_sensitivity)
-                
-                # Create the main chart
+                # Create advanced chart
                 fig = make_subplots(
                     rows=3, cols=1,
                     shared_xaxes=True,
@@ -111,7 +256,7 @@ with tab1:
                     row_heights=[0.6, 0.2, 0.2]
                 )
                 
-                # Price chart with moving averages
+                # Candlestick chart
                 fig.add_trace(
                     go.Candlestick(
                         x=price_data.index,
@@ -124,258 +269,165 @@ with tab1:
                     row=1, col=1
                 )
                 
-                # Moving averages
-                fig.add_trace(
-                    go.Scatter(
-                        x=price_data.index,
-                        y=indicators['sma_20'],
-                        name='SMA 20',
-                        line=dict(color='orange', width=1)
-                    ),
-                    row=1, col=1
-                )
-                
-                fig.add_trace(
-                    go.Scatter(
-                        x=price_data.index,
-                        y=indicators['ema_12'],
-                        name='EMA 12',
-                        line=dict(color='blue', width=1)
-                    ),
-                    row=1, col=1
-                )
-                
-                # RSI
-                fig.add_trace(
-                    go.Scatter(
-                        x=price_data.index,
-                        y=indicators['rsi'],
-                        name='RSI',
-                        line=dict(color='purple')
-                    ),
-                    row=2, col=1
-                )
-                
-                # RSI overbought/oversold lines
-                fig.add_hline(y=70, line_dash="dash", line_color="red", row=2, col=1)
-                fig.add_hline(y=30, line_dash="dash", line_color="green", row=2, col=1)
-                
-                # MACD
-                fig.add_trace(
-                    go.Scatter(
-                        x=price_data.index,
-                        y=indicators['macd'],
-                        name='MACD',
-                        line=dict(color='blue')
-                    ),
-                    row=3, col=1
-                )
-                
-                fig.add_trace(
-                    go.Scatter(
-                        x=price_data.index,
-                        y=indicators['macd_signal'],
-                        name='MACD Signal',
-                        line=dict(color='red')
-                    ),
-                    row=3, col=1
-                )
-                
-                # Add signal markers
-                if current_signal['action'] != 'HOLD':
-                    signal_color = 'green' if current_signal['action'] == 'BUY' else 'red'
-                    signal_symbol = 'triangle-up' if current_signal['action'] == 'BUY' else 'triangle-down'
-                    
+                # Add technical indicators
+                if 'sma_20' in indicators:
                     fig.add_trace(
                         go.Scatter(
-                            x=[price_data.index[-1]],
-                            y=[price_data['close'].iloc[-1]],
-                            mode='markers',
-                            marker=dict(
-                                symbol=signal_symbol,
-                                size=15,
-                                color=signal_color
-                            ),
-                            name=f'{current_signal["action"]} Signal',
-                            showlegend=True
+                            x=price_data.index,
+                            y=indicators['sma_20'],
+                            name='SMA 20',
+                            line=dict(color='orange', width=1)
                         ),
                         row=1, col=1
                     )
                 
-                fig.update_layout(
-                    height=800,
-                    title=f"{selected_pair} - Last Updated: {datetime.datetime.now().strftime('%H:%M:%S')}",
-                    xaxis_rangeslider_visible=False
-                )
+                if 'rsi' in indicators:
+                    fig.add_trace(
+                        go.Scatter(
+                            x=price_data.index,
+                            y=indicators['rsi'],
+                            name='RSI',
+                            line=dict(color='purple')
+                        ),
+                        row=2, col=1
+                    )
                 
+                if 'macd' in indicators:
+                    fig.add_trace(
+                        go.Scatter(
+                            x=price_data.index,
+                            y=indicators['macd'],
+                            name='MACD',
+                            line=dict(color='blue')
+                        ),
+                        row=3, col=1
+                    )
+                
+                fig.update_layout(height=800, title=f"{selected_pair} Technical Analysis")
                 st.plotly_chart(fig, use_container_width=True)
                 
-            else:
-                st.error("Unable to fetch live forex data. Please check your API configuration.")
-                st.info("Make sure your Alpha Vantage API key is set in the environment variables as 'ALPHA_VANTAGE_API_KEY'")
-                
-        except Exception as e:
-            st.error(f"Error loading data: {str(e)}")
-            st.info("This might be due to API rate limits or connectivity issues. Please try again in a moment.")
-
-    with col2:
-        st.subheader("🎯 Current Signal")
-        
-        try:
-            if 'current_signal' in locals() and current_signal:
-                # Signal display
-                if current_signal['action'] == 'BUY':
-                    st.success(f"🟢 **BUY SIGNAL**")
+                # Signal details
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Signal", current_signal['action'])
+                with col2:
                     st.metric("Confidence", f"{current_signal['confidence']:.1f}%")
-                elif current_signal['action'] == 'SELL':
-                    st.error(f"🔴 **SELL SIGNAL**")
-                    st.metric("Confidence", f"{current_signal['confidence']:.1f}%")
-                else:
-                    st.info("⚪ **HOLD** - No clear signal")
-                    st.metric("Confidence", f"{current_signal['confidence']:.1f}%")
-                
-                # Current market data
-                if 'price_data' in locals() and price_data is not None and not price_data.empty:
-                    current_price = price_data['close'].iloc[-1]
-                    price_change = price_data['close'].iloc[-1] - price_data['close'].iloc[-2] if len(price_data) > 1 else 0
-                    
-                    st.metric(
-                        "Current Price",
-                        format_currency(current_price, selected_pair),
-                        delta=f"{price_change:+.5f}"
-                    )
-                    
-                    # Entry suggestions
-                    if current_signal['action'] != 'HOLD':
-                        st.subheader("📍 Trade Setup")
-                        entry_price = current_price
-                        
-                        if current_signal['action'] == 'BUY':
-                            stop_loss = entry_price - (stop_loss_pips * 0.0001)
-                            take_profit = entry_price + (take_profit_pips * 0.0001)
-                        else:
-                            stop_loss = entry_price + (stop_loss_pips * 0.0001)
-                            take_profit = entry_price - (take_profit_pips * 0.0001)
-                        
-                        st.write(f"**Entry:** {format_currency(entry_price, selected_pair)}")
-                        st.write(f"**Stop Loss:** {format_currency(stop_loss, selected_pair)}")
-                        st.write(f"**Take Profit:** {format_currency(take_profit, selected_pair)}")
-                        
-                        # Risk/Reward ratio
-                        risk_reward = take_profit_pips / stop_loss_pips
-                        st.write(f"**Risk/Reward:** 1:{risk_reward:.1f}")
-                        
-                        # Store signal in history
-                        signal_data = {
-                            'timestamp': datetime.datetime.now(),
-                            'pair': selected_pair,
-                            'action': current_signal['action'],
-                            'confidence': current_signal['confidence'],
-                            'entry_price': entry_price,
-                            'stop_loss': stop_loss,
-                            'take_profit': take_profit
-                        }
-                        
-                        if st.button(f"📝 Log {current_signal['action']} Signal"):
-                            st.session_state.signal_history.append(signal_data)
-                            st.success("Signal logged!")
-                            time.sleep(1)
-                            st.rerun()
+                with col3:
+                    st.metric("Current Price", format_currency(price_data['close'].iloc[-1], selected_pair))
         
         except Exception as e:
-            st.error(f"Error generating signals: {str(e)}")
-        
-        # Market sentiment indicators
-        st.subheader("📊 Market Sentiment")
-        
-        try:
-            if 'indicators' in locals():
-                # RSI interpretation
-                rsi_value = indicators['rsi'].iloc[-1]
-                if rsi_value > 70:
-                    st.write("🔴 **RSI:** Overbought")
-                elif rsi_value < 30:
-                    st.write("🟢 **RSI:** Oversold")
-                else:
-                    st.write("🟡 **RSI:** Neutral")
-                
-                # MACD interpretation
-                macd_value = indicators['macd'].iloc[-1]
-                macd_signal_value = indicators['macd_signal'].iloc[-1]
-                
-                if macd_value > macd_signal_value:
-                    st.write("🟢 **MACD:** Bullish")
-                else:
-                    st.write("🔴 **MACD:** Bearish")
-                
-                # Moving average trend
-                sma_20 = indicators['sma_20'].iloc[-1]
-                current_price = price_data['close'].iloc[-1] if 'price_data' in locals() and price_data is not None else 0
-                
-                if current_price > sma_20:
-                    st.write("🟢 **Trend:** Above SMA 20")
-                else:
-                    st.write("🔴 **Trend:** Below SMA 20")
-        
-        except Exception as e:
-            st.write("Market sentiment data unavailable")
+            st.error(f"Error loading advanced charts: {str(e)}")
 
-    # Signal History section
-    st.subheader("📈 Signal History & Performance")
-
-    if st.session_state.signal_history:
-        history_df = pd.DataFrame(st.session_state.signal_history)
-        
-        # Performance metrics
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            total_signals = len(history_df)
-            st.metric("Total Signals", total_signals)
-        
-        with col2:
-            buy_signals = len(history_df[history_df['action'] == 'BUY'])
-            st.metric("Buy Signals", buy_signals)
-        
-        with col3:
-            sell_signals = len(history_df[history_df['action'] == 'SELL'])
-            st.metric("Sell Signals", sell_signals)
-        
-        with col4:
-            avg_confidence = history_df['confidence'].mean()
-            st.metric("Avg Confidence", f"{avg_confidence:.1f}%")
-        
-        # Recent signals table
-        st.subheader("Recent Signals")
-        display_df = history_df.copy()
-        display_df['timestamp'] = display_df['timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
-        display_df = display_df.sort_values('timestamp', ascending=False).head(10)
-        
-        st.dataframe(
-            display_df[['timestamp', 'pair', 'action', 'confidence', 'entry_price']],
-            use_container_width=True
-        )
-        
-        # Clear history button
-        if st.button("🗑️ Clear Signal History"):
-            st.session_state.signal_history = []
-            st.rerun()
-
+# Tab 3: Trading Journal
+with tab3:
+    assistant.show_trading_journal()
+    
+    # Add trade outcome tracking
+    st.subheader("📝 Update Trade Results")
+    
+    journal = st.session_state.trading_journal
+    pending_trades = [t for t in journal if t.get('status') == 'Planned']
+    
+    if pending_trades:
+        for i, trade in enumerate(pending_trades):
+            with st.expander(f"Trade {trade['id']}: {trade['action']} {trade['pair']}"):
+                st.write(f"**Entry Price:** {trade.get('entry_price', 'N/A')}")
+                st.write(f"**Position Size:** {trade.get('position_size', 'N/A')}")
+                
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    if st.button("✅ Won", key=f"win_{i}"):
+                        trade['status'] = 'Completed'
+                        trade['result'] = 'Win'
+                        trade['profit_loss'] = trade.get('risk_amount', 50) * 2  # Assume 2:1 reward
+                        st.rerun()
+                
+                with col2:
+                    if st.button("❌ Lost", key=f"loss_{i}"):
+                        trade['status'] = 'Completed'
+                        trade['result'] = 'Loss'
+                        trade['profit_loss'] = -trade.get('risk_amount', 50)
+                        st.rerun()
+                
+                with col3:
+                    if st.button("⏹️ Cancelled", key=f"cancel_{i}"):
+                        trade['status'] = 'Cancelled'
+                        trade['result'] = 'Cancelled'
+                        trade['profit_loss'] = 0
+                        st.rerun()
     else:
-        st.info("No signals logged yet. Start trading to see your signal history here.")
+        st.info("No pending trades to update")
 
-# Auto-refresh functionality
-if auto_refresh:
-    time.sleep(refresh_interval)
+# Tab 4: Risk Manager
+with tab4:
+    assistant.show_risk_manager()
+    
+    # Add daily/weekly limits
+    st.subheader("📅 Trading Limits")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        daily_limit = st.number_input(
+            "Maximum trades per day",
+            min_value=1,
+            max_value=10,
+            value=3,
+            help="Limit yourself to avoid overtrading"
+        )
+    
+    with col2:
+        loss_limit = st.number_input(
+            "Daily loss limit ($)",
+            min_value=10.0,
+            max_value=500.0,
+            value=100.0,
+            help="Stop trading if you lose this much in one day"
+        )
+    
+    # Today's trading activity
+    today = datetime.datetime.now().date()
+    today_trades = [
+        t for t in st.session_state.trading_journal 
+        if t.get('timestamp', datetime.datetime.now()).date() == today
+    ]
+    
+    today_losses = sum([
+        t.get('profit_loss', 0) for t in today_trades 
+        if t.get('profit_loss', 0) < 0
+    ])
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Trades Today", len(today_trades))
+        if len(today_trades) >= daily_limit:
+            st.error("Daily trade limit reached!")
+    
+    with col2:
+        st.metric("Losses Today", f"${abs(today_losses):.2f}")
+        if abs(today_losses) >= loss_limit:
+            st.error("Daily loss limit reached!")
+
+# Tab 5: Learning Resources
+with tab5:
+    show_user_guide()
+
+# Auto-refresh for live data
+if st.sidebar.checkbox("🔄 Auto Update", value=False):
+    time.sleep(30)  # Update every 30 seconds
     st.rerun()
+
+# Add learning tips periodically
+notifications.add_learning_tip()
 
 # Footer
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: gray;'>
     <small>
-        🤖 AI Forex Trading Signals | Built with Streamlit<br>
-        Remember: Past performance is not indicative of future results. Trade responsibly.
+        🤖 Personal AI Forex Trading Assistant<br>
+        Designed to keep you safe while you learn to trade successfully
     </small>
 </div>
 """, unsafe_allow_html=True)

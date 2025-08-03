@@ -1,8 +1,8 @@
-# AI Forex Trading Signals
+# Personal AI Forex Trading Assistant
 
 ## Overview
 
-This is a Streamlit-based web application that provides AI-powered forex trading signals for major currency pairs. The system combines technical analysis indicators with machine learning models to generate real-time buy/sell/hold signals for scalping strategies. The application fetches live forex data from Alpha Vantage API, processes it through various technical indicators, and uses a Random Forest classifier to predict trading signals. It includes comprehensive risk management features, profit/loss calculations, and an interactive dashboard for traders to monitor market conditions and trading opportunities.
+This is an enhanced Streamlit-based web application designed as a personal AI forex trading assistant specifically for beginners with little to no trading experience. The system provides simple, safe, and smart trading guidance through AI-powered signals, comprehensive risk management, and step-by-step learning features. The application combines technical analysis with machine learning models to generate beginner-friendly buy/sell/hold recommendations, while featuring automated notifications, personal trading journal, risk management tools, and a progressive learning system that adapts to the user's experience level.
 
 ## User Preferences
 
@@ -11,10 +11,11 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 **Frontend Architecture**
-- Built with Streamlit framework for web-based dashboard interface
-- Single-page application with expandable sections and real-time updates
-- Interactive charts using Plotly for technical analysis visualization
-- Session state management for maintaining signal history and trade tracking
+- Built with Streamlit framework for beginner-friendly web interface
+- Multi-tab application with Simple Trading, Advanced Charts, Trading Journal, Risk Manager, and Learning sections
+- Progressive difficulty system that adapts interface complexity to user experience level
+- Interactive charts using Plotly with both simple line charts and advanced technical analysis
+- Session state management for personal settings, trading journal, notifications, and learning progress
 - Cached resource initialization for performance optimization
 
 **Data Processing Pipeline**
@@ -37,11 +38,20 @@ Preferred communication style: Simple, everyday language.
 - Multi-class classification (Buy/Sell/Hold) with balanced class weights
 - Model confidence scoring and signal strength assessment
 
-**Utility Functions**
+**Personal Trading Assistant Features**
+- Beginner-friendly setup wizard for personal trading profile configuration
+- Automated position sizing calculator based on account balance and risk tolerance
+- Smart notifications system with signal alerts, risk warnings, and educational tips
+- Progressive learning guidance with step-by-step beginner tutorials
+- Personal trading journal with trade tracking and performance analytics
+- Risk management dashboard with daily limits and safety controls
+
+**Enhanced Utility Functions**
 - Currency formatting based on pair types (JPY vs non-JPY pairs)
 - Pip value calculations for different currency pairs and trade sizes
 - Profit/loss calculation engine for trade performance tracking
 - Risk management utilities for position sizing and stop-loss calculations
+- Beginner-friendly explanations of market conditions and trading signals
 
 ## External Dependencies
 
