@@ -31,6 +31,16 @@ if 'trades' not in st.session_state:
     st.session_state.trades = []
 if 'personal_settings' not in st.session_state:
     st.session_state.personal_settings = None
+if 'trading_journal' not in st.session_state:
+    st.session_state.trading_journal = []
+if 'guidance_progress' not in st.session_state:
+    st.session_state.guidance_progress = {'show_guidance': True}
+if 'learning_data' not in st.session_state:
+    st.session_state.learning_data = {'learning_stats': {'total_feedback': 0, 'successful_predictions': 0, 'adaptation_count': 0}}
+if 'show_notifications' not in st.session_state:
+    st.session_state.show_notifications = False
+if 'show_setup' not in st.session_state:
+    st.session_state.show_setup = False
 
 # Initialize components
 @st.cache_resource
