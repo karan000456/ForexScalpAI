@@ -99,16 +99,19 @@ class PersonalTradingAssistant:
             )
             
             # Trading session
+            current_session = st.session_state.personal_settings.get('trading_session', 'New York Session (12-21 UTC)')
             trading_session = st.selectbox(
                 "When do you plan to trade?",
                 ['London Session (7-16 UTC)', 'New York Session (12-21 UTC)', 'Both Sessions', 'Asian Session (23-8 UTC)'],
+                index=['London Session (7-16 UTC)', 'New York Session (12-21 UTC)', 'Both Sessions', 'Asian Session (23-8 UTC)'].index(current_session),
                 help="London and New York sessions have the most activity"
             )
             
             # Notifications
+            current_notifications = st.session_state.personal_settings.get('notifications_enabled', True)
             notifications = st.checkbox(
                 "Enable trading alerts",
-                value=st.session_state.personal_settings['notifications_enabled'],
+                value=current_notifications,
                 help="Get notified when strong signals appear"
             )
         
