@@ -83,6 +83,11 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
 st.sidebar.header("⚙️ Your Trading Profile")
 settings = st.session_state.personal_settings
 
+# Ensure settings is not None
+if settings is None:
+    st.error("Personal settings not found. Please reload the page.")
+    st.stop()
+
 # Quick settings display
 st.sidebar.write(f"**Account:** ${settings['account_balance']:,.2f}")
 st.sidebar.write(f"**Risk Level:** {settings['risk_per_trade']}%")
@@ -226,12 +231,14 @@ with tab1:
         
         # Show beginner explanations
         try:
-            if price_data is not None and not price_data.empty:
-                indicators = tech_indicators.calculate_all_indicators(price_data)
+            # Get fresh data for this column
+            price_data_col2 = forex_data.get_live_data(selected_pair)
+            if price_data_col2 is not None and not price_data_col2.empty:
+                indicators = tech_indicators.calculate_all_indicators(price_data_col2)
                 assistant.show_beginner_explanation(indicators)
                 
                 # Recommendations
-                current_signal = ml_generator.generate_enhanced_signal(price_data, indicators, "Moderate", selected_pair)
+                current_signal = ml_generator.generate_enhanced_signal(price_data_col2, indicators, "Moderate", selected_pair)
                 recommendations = assistant.get_beginner_recommendations(current_signal, selected_pair)
                 
                 st.subheader("💡 My Recommendations")

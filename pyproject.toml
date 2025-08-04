@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.11"
 dependencies = [
+    "joblib>=1.5.1",
     "numpy>=2.3.2",
     "openai>=1.98.0",
     "pandas>=2.3.1",
